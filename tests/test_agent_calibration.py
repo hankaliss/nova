@@ -67,3 +67,18 @@ async def test_calibrated_budget_keeps_more_history():
     agent._chars_per_token["m"] = 5.0
     after = len(agent._outgoing_messages(text_mode=False))
     assert after > before
+
+
+@pytest.mark.asyncio
+async def test_ratio_is_reported_and_can_be_seeded():
+    saved = {}
+    agent = Agent(provider=Provider(prompt_tokens=100), model="m", system_prompt="s" * 480)
+    agent.ratio_callback = lambda model, ratio: saved.update({model: ratio})
+    await agent.send_sync("hi" * 10)
+    assert saved == {"m": pytest.approx(5.0)}
+
+    fresh = Agent(provider=Provider(prompt_tokens=100), model="m")
+    fresh.set_ratio("m", 4.0)
+    assert fresh.chars_per_token == pytest.approx(3.6)
+    fresh.set_ratio("x", 99.0)  # out of range: ignored
+    assert "x" not in fresh._chars_per_token

@@ -196,6 +196,14 @@ class Agent:
         self.tool_callback: Callable[[dict[str, Any]], Any] | None = None
         # Per-model characters/token, learned from Ollama's prompt_eval_count.
         self._chars_per_token: dict[str, float] = {}
+        # Called with (model, ratio) after each update, so it can be stored.
+        self.ratio_callback: Callable[[str, float], None] | None = None
+
+    def set_ratio(self, model: str, ratio: float) -> None:
+        """Seed a model's ratio from a stored value (ignored if out of range)."""
+        low, high = _CPT_RANGE
+        if low <= ratio <= high and model not in self._chars_per_token:
+            self._chars_per_token[model] = ratio
 
     @property
     def chars_per_token(self) -> float:
@@ -211,6 +219,8 @@ class Agent:
         ratio = min(high, max(low, sent_chars / prompt_tokens))
         old = self._chars_per_token.get(self.model)
         self._chars_per_token[self.model] = ratio if old is None else (old + ratio) / 2
+        if self.ratio_callback is not None:
+            self.ratio_callback(self.model, self._chars_per_token[self.model])
 
     async def _notify(self, event: dict[str, Any]) -> None:
         """Fire the optional tool-event callback (UI instrumentation)."""

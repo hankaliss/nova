@@ -186,6 +186,8 @@ class NovaRpc(
         }
         self._agent.context.system_prompt = self._load_system_prompt()
         self._agent.tool_callback = self._on_tool_event
+        self._agent.ratio_callback = self._save_ratio
+        self._load_ratio(self._agent.model)
         self._registry.permissions = PermissionSystem(
             approval_callback=self._request_permission,
             auto_approve_writes=self._settings["auto_approve_writes"] == "true",
