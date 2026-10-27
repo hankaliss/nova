@@ -11,11 +11,13 @@ export function SettingsDialog({
   settings,
   onSave,
   onClose,
+  onRunSetup,
 }: {
   open: boolean;
   settings: Settings | null;
   onSave: (settings: Settings) => void;
   onClose: () => void;
+  onRunSetup?: () => void;
 }) {
   const [tab, setTab] = useState(0);
   const [draft, setDraft] = useState<Settings | null>(null);
@@ -115,6 +117,15 @@ export function SettingsDialog({
             "Disable animations and transitions",
             "reduce_motion",
             "true"
+          )}
+          {onRunSetup && (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-text">Setup</div>
+                <div className="text-[12.5px] text-subtext">Ollama, model, web search and shortcut, step by step</div>
+              </div>
+              <Btn onClick={onRunSetup}>Run setup again</Btn>
+            </div>
           )}
         </div>
       )}

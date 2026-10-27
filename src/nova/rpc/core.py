@@ -89,6 +89,8 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "reduce_motion": "false",
     # Global show/hide key registered with KDE ("" = none), AD-035.
     "toggle_shortcut": "",
+    # First-run wizard (AD-040): "" = never decided, "true" = done.
+    "onboarding_done": "",
 }
 
 from nova.rpc.settings import SettingsMixin
@@ -101,6 +103,7 @@ from nova.rpc.memories import MemoriesMixin
 from nova.rpc.terminal import TerminalMixin
 from nova.rpc.system import SystemMixin
 from nova.rpc.shortcut import ShortcutMixin
+from nova.rpc.setup import SetupMixin
 
 
 class NovaRpc(
@@ -114,6 +117,7 @@ class NovaRpc(
     TerminalMixin,
     SystemMixin,
     ShortcutMixin,
+    SetupMixin,
 ):
     """Bridges the agent stack to a JSON-RPC transport."""
 

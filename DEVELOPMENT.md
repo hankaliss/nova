@@ -79,9 +79,26 @@ doesn't make the second copy exit:
 | Variable | Purpose |
 |---|---|
 | `NOVA_SAMPLE=a..e` | demo states exercising UI features (see `electron/dev/harness.cjs`) |
+| `NOVA_SAMPLE=w` | walks the real setup wizard and saves a screenshot per step (`NOVA_SHOT` is the name prefix); see below |
 | `NOVA_SHOT=/path.png` | save a window screenshot, then quit (with `NOVA_SAMPLE` or `NOVA_E2E`) |
 | `NOVA_E2E=1` | end-to-end self-test against a live Ollama |
 | `NOVA_DEBUG_RENDERER=1` | forward renderer console to stdout |
+
+### Setup wizard (AD-040)
+
+It opens on launch while `onboarding_done` isn't `"true"` or Ollama lists no
+models. To see it again: Settings → General → **Run setup again**, or start
+with a fresh profile. The sidecar marks a profile done by itself when Ollama
+already has models, so a fresh profile against your real Ollama skips it:
+point the profile at a fake Ollama instead. The walk-through behind the setup wizard
+PR's screenshots: a throwaway `HOME` and `XDG_DATA_HOME` (keep
+`PYTHONUSERBASE=$HOME/.local` of the real user so the Python deps resolve),
+`ollama_url` set to the fake in that profile's database, `NOVA_MCP_CONFIG`
+pointing into the profile, and a small HTTP server answering `/api/tags`
+(empty), `/api/pull` (slow NDJSON progress) and `/api/show`, started a few
+seconds late so step 1 is seen waiting. Then `NOVA_SAMPLE=w
+NOVA_SHOT=/tmp/wizard.png electron --ozone-platform=x11 .` in `electron/`
+(rebuild with `npx vite build` first: Electron loads `dist/`).
 
 ## Tests
 

@@ -178,7 +178,85 @@ function runSample() {
     ]);
     emit("modelsListed", [["qwen3:8b", "qwen2.5-coder:7b"]]);
     shotAt(800);
+  } else if (sample === "w") {
+    runWizard(shot);
   }
+}
+
+// ---- Setup wizard walk-through (dev only, issue #20) ------------------------
+
+/**
+ * Walks the real first-run wizard (real sidecar, throwaway HOME) and saves
+ * one screenshot per step as <NOVA_SHOT without .png>-<n>-<step>.png. Pair it
+ * with an Ollama that is down at first and has no models (see DEVELOPMENT.md).
+ */
+async function runWizard(shot) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const js = (code) => win.webContents.executeJavaScript(code);
+  // A window that isn't painting hands back its last frame: keep it
+  // rendering and wait for a fresh one before each capture.
+  win.webContents.setBackgroundThrottling(false);
+  const snap = async (name) => {
+    if (!shot) return;
+    win.webContents.invalidate();
+    await js("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
+    await wait(250);
+    const file = shot.replace(/\.png$/, "") + `-${name}.png`;
+    fs.writeFileSync(file, (await win.webContents.capturePage()).toPNG());
+    console.error(`Nova wizard: saved ${file}`);
+  };
+  const click = async (label) => {
+    const ok = await js(`(() => {
+      const b = [...document.querySelectorAll("[role=dialog] button")]
+        .find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)}));
+      if (b && !b.disabled) { b.click(); return true; }
+      return false;
+    })()`);
+    if (!ok) throw new Error(`no enabled "${label}" button`);
+  };
+  const until = async (test, ms = 30000) => {
+    for (let t = 0; t < ms; t += 250) {
+      if (await js(test)) return true;
+      await wait(250);
+    }
+    return false;
+  };
+  const text = '(document.querySelector("[role=dialog]")?.textContent || "")';
+  try {
+    if (!(await until(`${text}.includes("Set up Nova")`))) throw new Error("wizard did not open");
+    await wait(400);
+    await snap("1-ollama");
+    if (!(await until(`${text}.includes("Recommended")`, 60000))) throw new Error("no model step");
+    await wait(300);
+    await snap("2-model");
+    await click("Download");
+    if (!(await until('!!document.querySelector("[role=progressbar]")'))) throw new Error("no progress bar");
+    await wait(1500);
+    await snap("3-download");
+    // Done = no progress bar, no Download button, no error: the card says Ready.
+    const finished = `!document.querySelector("[role=progressbar], [role=alert]") &&
+      ![...document.querySelectorAll("[role=dialog] button")].some((b) => b.textContent.includes("Download"))`;
+    if (!(await until(finished, 60000))) throw new Error("download did not finish");
+    if (await js('!!document.querySelector("[role=alert]")')) throw new Error("download failed");
+    await snap("4-ready-model");
+    await click("Next");
+    await wait(400);
+    await snap("5-extras");
+    await click("Next");
+    await wait(400);
+    await snap("6-permissions");
+    await click("Start chatting");
+    await wait(600);
+    const closed = await js('!document.querySelector("[role=dialog]")');
+    const model = await call("currentModel", []).catch((e) => `error ${e.message}`);
+    console.error(`Nova wizard: walk-through done, dialog closed=${closed}, model=${model}`);
+  } catch (e) {
+    console.error(`Nova wizard: FAILED ${e.message}`);
+    console.error(`Nova wizard: dialog text: ${await js(text).catch(() => "?")}`);
+    console.error(`Nova wizard: visible=${win.isVisible()} focused=${win.isFocused()} minimized=${win.isMinimized()}`);
+    await snap("failed");
+  }
+  quit();
 }
 
 // ---- Real end-to-end run (dev only) -----------------------------------------

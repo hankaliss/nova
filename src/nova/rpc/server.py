@@ -168,6 +168,10 @@ def build_server(rpc: NovaRpc, transport: Transport) -> Server:
         "terminalResize",
         "shortcutStatus",
         "shortcutRecording",
+        "getSetupStatus",
+        "pullModel",
+        "cancelPull",
+        "markOnboardingDone",
     ):
         server.register(name)(getattr(rpc, name))
     return server

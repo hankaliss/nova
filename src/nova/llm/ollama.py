@@ -157,6 +157,34 @@ class OllamaProvider(LLMProvider):
             )
         return models
 
+    async def pull(self, model: str) -> AsyncIterator[dict[str, Any]]:
+        """Download ``model``; yields Ollama's progress objects
+        (``status``, and ``completed``/``total`` bytes while downloading).
+
+        Raises RuntimeError with Ollama's message on failure (unknown model,
+        no network, disk full). A cancelled pull resumes next time.
+        """
+        # No read timeout: verifying a multi-GB layer is silent for a while.
+        timeout = httpx.Timeout(None, connect=5.0)
+        async with self._client.stream(
+            "POST", "/api/pull", json={"model": model, "stream": True}, timeout=timeout
+        ) as resp:
+            if resp.status_code != 200:
+                body = (await resp.aread()).decode("utf-8", "replace")
+                try:
+                    body = json.loads(body).get("error", body)
+                except ValueError:
+                    pass
+                raise RuntimeError(body.strip() or f"HTTP {resp.status_code}")
+            async for line in resp.aiter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                if data.get("error"):
+                    raise RuntimeError(data["error"])
+                yield data
+        self._model_info_at = 0.0  # the new model must show up in the list
+
     # ---- Context fitting (see nova.llm.context_fit) ---------------------
 
     async def model_profile(self, model: str) -> dict[str, Any]:
