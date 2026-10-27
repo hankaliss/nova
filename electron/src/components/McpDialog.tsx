@@ -14,7 +14,7 @@ export interface McpServerStatus {
   command: string;
   toolCount: number;
   /** The server's tools with the risk Nova gates them with. */
-  tools?: { name: string; description: string; risk: string }[];
+  tools?: { name: string; description: string; risk: string; skill_only?: boolean }[];
   auth?: { url: string; code: string } | null;
 }
 
@@ -171,8 +171,16 @@ export function McpDialog({
                           <span className="min-w-0 truncate font-mono text-[12.5px] text-text">
                             {t.name}
                           </span>
+                          {t.skill_only && (
+                            <span
+                              className="ml-auto shrink-0 rounded-full bg-surface-alt px-2 py-0.5 text-[11.5px] text-meta"
+                              title="Not sent to the model; skills can use it when it is read-only"
+                            >
+                              skills only
+                            </span>
+                          )}
                           <span
-                            className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium ${risk.tone}`}
+                            className={`${t.skill_only ? "" : "ml-auto "}shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium ${risk.tone}`}
                           >
                             {risk.label}
                           </span>

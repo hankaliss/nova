@@ -409,7 +409,7 @@ class Agent:
         send_tools = mode in ("native", "prompt")
         tools = self._tool_schemas() if send_tools else None
 
-        tool_names = {t.name for t in self.registry.list_tools()} if self.registry else set()
+        tool_names = {t.name for t in self.registry.list_tools() if t.model_visible} if self.registry else set()
         shown = ""  # everything yielded so far: the UI's and the transcript's text
 
         def visible(text: str) -> str:

@@ -30,4 +30,7 @@ class Tool(BaseModel):
     # False keeps a WRITE tool out of the blanket "auto-approve WRITE tools"
     # setting (it still asks unless the user granted it explicitly).
     auto_approvable: bool = True
+    # False keeps the tool out of the model's prompt; skills can still call
+    # it through nova.skills.host when it is READ (AD-042).
+    model_visible: bool = True
     implementation: ToolImplementation
