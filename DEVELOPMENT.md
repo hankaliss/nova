@@ -85,8 +85,11 @@ doesn't make the second copy exit:
 
 ## Tests
 
-pytest (with pytest-asyncio) for Python, Vitest for the renderer's pure
-logic (`electron/src/**/*.test.ts`, Node environment, no DOM). Tests must not
+pytest (with pytest-asyncio) for Python, Vitest for the renderer: pure logic
+in `electron/src/**/*.test.ts` (Node environment) and components in
+`*.test.tsx` (jsdom + Testing Library; start the file with
+`// @vitest-environment jsdom` and use `stubNova()` from `src/test/setup.ts`
+for `window.nova`). Tests must not
 need a GPU, Ollama or network; mock external services.
 
 ```bash
