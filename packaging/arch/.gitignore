@@ -1,0 +1,5 @@
+/nova/
+/src/
+/pkg/
+*.pkg.tar.*
+*.log

@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.so
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+.DS_Store
+Thumbs.db
+
+# Node / Electron
+node_modules/
+
+# Local-only files (personal notes, scratch)
+local/
+
+# Runtime data (never commit databases)
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Nova
+GenericName=AI Assistant
+Comment=Local-first AI desktop assistant
+Exec=/usr/bin/nova
+Icon=nova
+Terminal=false
+Categories=Utility;
+Keywords=AI;assistant;chat;LLM;ollama;
+StartupWMClass=nova-electron
+StartupNotify=true
+Actions=toggle;
+
+[Desktop Action toggle]
+Name=Show or hide Nova
+Exec=/usr/bin/nova --toggle

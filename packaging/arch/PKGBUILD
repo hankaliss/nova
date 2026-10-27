@@ -1,0 +1,57 @@
+# Nova: local-first AI desktop assistant (AD-032).
+# Builds the committed HEAD of this repository:
+#   cd packaging/arch && makepkg -si
+pkgname=nova
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Local-first AI desktop assistant for KDE Plasma (Ollama)"
+arch=('any')
+url="https://github.com/hankaliss/nova"
+license=('LicenseRef-none')
+# electron44: the Electron release Nova was verified with (AD-031).
+depends=('electron44' 'python' 'python-httpx' 'python-pydantic' 'python-mcp' 'python-dbus-fast')
+makedepends=('git' 'npm' 'python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+optdepends=('ollama: local LLM runtime (required to chat)'
+            'ollama-cuda: Ollama with NVIDIA GPU support'
+            'searxng: local web search for web.search'
+            'docker: GitHub MCP server'
+            'starship: shell prompt in the embedded terminal')
+source=("nova::git+file://${startdir}/../..")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd nova
+  local base
+  base=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+  printf '%s.r%s.g%s' "$base" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd nova/electron
+  # --ignore-scripts: no Electron download, the system electron44 is used.
+  npm ci --ignore-scripts --no-audit --no-fund
+  npm run build
+  cd ..
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd nova
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  # Replace the wheel's console script: -s keeps a dev install of nova in
+  # ~/.local (user site-packages) from shadowing the packaged one.
+  printf '#!/bin/sh\nexec /usr/bin/python -s -m nova "$@"\n' > "$pkgdir/usr/bin/nova"
+  chmod 755 "$pkgdir/usr/bin/nova"
+
+  local app="$pkgdir/usr/lib/nova/app"
+  install -Dm644 -t "$app" electron/main.cjs electron/preload.cjs electron/package.json
+  cp -r electron/dist electron/assets "$app/"
+
+  install -Dm644 agent.md "$pkgdir/usr/lib/nova/agent.md"
+  cp -r skills "$pkgdir/usr/lib/nova/"
+  find "$pkgdir/usr/lib/nova/skills" -name __pycache__ -prune -exec rm -rf {} +
+
+  install -Dm644 packaging/nova.desktop "$pkgdir/usr/share/applications/nova.desktop"
+  install -Dm644 electron/assets/nova-icon.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/nova.png"
+  install -Dm644 electron/assets/nova-icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/nova.svg"
+}
