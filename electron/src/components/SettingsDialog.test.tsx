@@ -77,4 +77,14 @@ describe("SettingsDialog", () => {
     view.rerender(<SettingsDialog open settings={settings} onSave={onSave} onClose={onClose} />);
     expect(screen.getByRole("switch", { name: "Always on top" }).getAttribute("aria-checked")).toBe("false");
   });
+
+  it("reopens the setup wizard from General", () => {
+    stubNova();
+    const onRunSetup = vi.fn();
+    render(
+      <SettingsDialog open settings={settings} onSave={vi.fn()} onClose={vi.fn()} onRunSetup={onRunSetup} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run setup again" }));
+    expect(onRunSetup).toHaveBeenCalled();
+  });
 });

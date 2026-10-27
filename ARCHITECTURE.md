@@ -522,6 +522,7 @@ Index (details below, in the order they were made):
 | AD-037 | Text-mode tool calls hidden from the visible/saved reply | current |
 | AD-038 | Token estimates calibrated per model from `prompt_eval_count` | current |
 | AD-039 | Tools return rendered reports (report kit); shown at once, kept out of the model's context | current |
+| AD-040 | First-run setup wizard (Ollama, model by VRAM with in-app pull, extras, permissions) | current |
 | AD-042 | Skill-only MCP tools: hidden from the model, callable by skills (READ only); risk from `readOnlyHint` | current |
 
 ## AD-001: UI Framework
@@ -845,4 +846,13 @@ Index (details below, in the order they were made):
 * **Alternatives:** expose the toolsets to the model (≈ +34K characters, about 13K tokens, in every prompt: more than gemma4's 12K auto context, and measured to pull "git"/"GitHub" requests away from the skill); a second, model-less GitHub server for skills (two containers, two logins); the GitHub REST API or `gh` from the skill (rejected by the user in favour of the MCP server).
 * **Rationale:** user's choice. The model's prompt stays as before (23 GitHub tools, 20,284 characters) while skills get the data. A skill runs inside a tool call the user already allowed, so it may only chain into READ tools: a WRITE tool would skip its own approval.
 * **Consequences:** `skill_only` write tools (e.g. `merge_pull_request`) are unreachable by both the model and skills. Existing `mcp.json` files keep their old toolsets until the server is re-added or edited; without the tools `git_companion` renders the local part and says what is missing. `readOnlyHint` is trusted like tool names already were: a hostile server could mislabel a tool, the same as naming it `list_…`. The MCP dialog marks such tools "skills only".
+
+## AD-040: First-run setup wizard
+
+* **Date:** 2026-10-27
+* **Decision:** A four-step modal (`SetupWizard.tsx`) takes a new user from install to first chat without a terminal, except to start Ollama. **1 Ollama:** installed (`which ollama`) and reachable; otherwise the exact command with a copy button, re-checked every 2 s, moving on by itself. **2 Model:** VRAM from `nvidia-smi` picks a recommendation from `MODEL_RECOMMENDATIONS` (`src/nova/rpc/setup.py`: < ~6 GB `qwen3:1.7b`, 6–11 GB `DEFAULT_MODEL`, ≥ ~12 GB `qwen3:8b`; untested tiers say "not benchmarked"); **Download** streams Ollama's `/api/pull` (`OllamaProvider.pull`) as `pull_progress` events with a progress bar and Cancel, readable errors with Retry, then selects the model; existing models can be picked instead. **3 Extras:** SearXNG check and the shortcut field. **4 Ready:** what READ / WRITE / DESTRUCTIVE mean. Every step has Skip; closing counts as done. RPC: `getSetupStatus`, `pullModel`, `cancelPull`, `markOnboardingDone`.
+* **When it opens:** once per launch when `onboarding_done` isn't `"true"` or Ollama lists no models. `getSetupStatus` marks a profile done by itself when the flag was never set and models already exist, so existing users never see it unasked. Settings → General → *Run setup again* and an *Open setup* button on the empty chat (Ollama down or no models) reopen it.
+* **Alternatives:** a checklist on the empty chat only; install-side changes only (`ollama` as a package dependency, a `nova doctor` CLI); setup through the chat (no model to talk to yet). Chosen by the user: A, the wizard.
+* **Rationale:** the first message used to require a terminal (`ollama pull`) and knowing which model fits the GPU; the pull API needs no root, so Nova can do it with progress.
+* **Consequences:** Nova never runs sudo or installs Ollama or SearXNG; it shows commands. The recommendation table is static: measuring per machine is #21 (`model_scout`), which can later feed this step. A user whose Ollama already has models gets no wizard on a fresh profile, by design.
 

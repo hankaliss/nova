@@ -32,6 +32,7 @@ import { ModelPicker } from "./components/ModelPicker";
 import { NovaMark } from "./components/NovaMark";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { SetupStatus, SetupWizard } from "./components/SetupWizard";
 import { SkillSaveCard } from "./components/SkillSaveCard";
 import { SkillsDialog } from "./components/SkillsDialog";
 import { Sidebar } from "./components/Sidebar";
@@ -106,6 +107,21 @@ export default function App() {
   const [resolvedChoices, setResolvedChoices] = useState<Set<string>>(new Set());
   const [savedSkills, setSavedSkills] = useState<Set<string>>(new Set());
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const setupChecked = useRef(false);
+
+  // First-run wizard (AD-040): once per launch, when setup was never
+  // finished or Ollama has no models. The sidecar marks existing users done.
+  useEffect(() => {
+    if (!connected || spinner || setupChecked.current) return;
+    setupChecked.current = true;
+    void window.nova
+      .call("getSetupStatus")
+      .then((s: SetupStatus) => {
+        if (s && (!s.onboarding_done || s.models.length === 0)) setSetupOpen(true);
+      })
+      .catch(() => {});
+  }, [connected, spinner]);
   // Compact mode: small chat-only window (no sidebar, inspector or artifact
   // panel). Opening an artifact leaves it.
   // Remembered on this device across restarts.
@@ -411,6 +427,7 @@ export default function App() {
                   modelCount={modelCount}
                   model={String(modelInfo.name || "")}
                   onStarter={(text) => send(text)}
+                  onOpenSetup={() => setSetupOpen(true)}
                 />
               )}
 
@@ -620,6 +637,19 @@ export default function App() {
           });
         }}
         onClose={() => setSettingsOpen(false)}
+        onRunSetup={() => {
+          setSettingsOpen(false);
+          setSetupOpen(true);
+        }}
+      />
+      <SetupWizard
+        open={setupOpen}
+        settings={settings}
+        onSaveSettings={(s) => {
+          setSettings(s);
+          window.nova.call("settings_save", { settings_json: JSON.stringify(s) });
+        }}
+        onClose={() => setSetupOpen(false)}
       />
       <MemoriesDialog
         open={memoriesOpen}

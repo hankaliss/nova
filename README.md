@@ -46,11 +46,7 @@ unrestricted shell.
 ## Requirements
 
 - Linux; developed and tested on CachyOS with KDE Plasma 6 (Wayland)
-- [Ollama](https://ollama.com) at `localhost:11434` with at least one model. On an 8 GB GPU, `qwen3:4b` is the default and the fastest tested:
-
-  ```bash
-  ollama pull qwen3:4b
-  ```
+- [Ollama](https://ollama.com) running at `localhost:11434`. On first launch Nova's setup wizard checks it, recommends a model for your GPU and downloads it for you (or by hand: `ollama pull qwen3:4b`, the default on an 8 GB GPU)
 
 - Optional: SearXNG at `localhost:8888` with the JSON format enabled (for web search), Docker (for the GitHub MCP server)
 

@@ -13,11 +13,13 @@ export function EmptyState({
   modelCount,
   model,
   onStarter,
+  onOpenSetup,
 }: {
   ollamaOk: boolean;
   modelCount: number;
   model: string;
   onStarter: (text: string) => void;
+  onOpenSetup?: () => void;
 }) {
   const status = !ollamaOk
     ? "Ollama isn't reachable. Start it (systemctl start ollama), then reopen Nova."
@@ -40,6 +42,14 @@ export function EmptyState({
       >
         {status}
       </p>
+      {onOpenSetup && (!ollamaOk || modelCount === 0) && (
+        <button
+          className="mt-4 cursor-pointer rounded-lg bg-accent px-4 py-2 text-[13.5px] font-semibold text-accent-text hover:bg-accent-2"
+          onClick={onOpenSetup}
+        >
+          Open setup
+        </button>
+      )}
 
       <div className="mt-8 grid w-full max-w-[560px] grid-cols-2 gap-2.5">
         {STARTERS.map(({ icon: Icon, text }) => (

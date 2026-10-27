@@ -73,7 +73,8 @@ export interface ModelDetail {
 }
 
 export interface NovaApi {
-  call(method: string, params?: unknown): void;
+  /** Resolves with the sidecar method's result. */
+  call(method: string, params?: unknown): Promise<any>;
   copyText(text: string): Promise<boolean>;
   openAuthUrl?(): Promise<boolean>;
   openArtifact?(html: string): Promise<boolean>;
