@@ -34,7 +34,7 @@ unrestricted shell.
 - Files: list, read (with jump-to-passage) and search in your home folder; keys, credentials and browser profiles are blocked
 - Web: search through your own [SearXNG](https://docs.searxng.org), fetch pages
 - Shell: one persistent shell, shared with the embedded terminal (Ctrl+T); every command asks first
-- Skills: installable `SKILL.md` + `tools.py` packages, toggled in the Skills panel; the model can write new ones (always confirmed, with the code shown). Skills can return polished reports that open in the side panel at once while the model explains them. Bundled: **System doctor** (what went wrong since boot: failed services, errors by source, crashes, out-of-memory kills, boot time), **Disk cleaner** (largest folders, caches, Ollama models, node_modules, old package versions; clears a cache folder only after you confirm)
+- Skills: installable `SKILL.md` + `tools.py` packages, toggled in the Skills panel; the model can write new ones (always confirmed, with the code shown). Skills can return polished reports that open in the side panel at once while the model explains them. Bundled: **System doctor** (what went wrong since boot: failed services, errors by source, crashes, out-of-memory kills, boot time), **Git companion** (status, staged changes and recent commits of a repo; uncommitted/unpushed work across all repos in ~/Projects; read only), **Disk cleaner** (largest folders, caches, Ollama models, node_modules, old package versions; clears a cache folder only after you confirm)
 - MCP: connect any stdio [MCP](https://modelcontextprotocol.io) server (GitHub setup form included)
 
 **Desktop**
