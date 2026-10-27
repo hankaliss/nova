@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ArtifactPanel } from "./ArtifactPanel";
 import { stubNova } from "../test/setup";
@@ -69,5 +69,56 @@ describe("ArtifactPanel", () => {
     expect(nova.openArtifact).toHaveBeenCalledWith("<h1>rev 1</h1>");
     fireEvent.click(screen.getByTitle("Close artifact"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe("resizing", () => {
+    beforeEach(() => {
+      // This jsdom has no usable localStorage; a Map stands in for it.
+      const store = new Map<string, string>();
+      vi.stubGlobal("localStorage", {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, String(v)),
+        removeItem: (k: string) => void store.delete(k),
+        clear: () => store.clear(),
+      });
+      window.innerWidth = 1200;
+    });
+    const panel = () => screen.getByRole("complementary", { name: "Artifact preview" });
+    const handle = () => screen.getByRole("separator", { name: "Resize artifact panel" });
+
+    it("starts at the default width and widens with the keyboard, remembering it", () => {
+      setup(0);
+      expect(panel().style.width).toBe("480px");
+      fireEvent.keyDown(handle(), { key: "ArrowLeft" });
+      expect(panel().style.width).toBe("512px");
+      expect(localStorage.getItem("nova.artifactWidth")).toBe("512");
+    });
+
+    it("drags the left edge: leftwards is wider", () => {
+      setup(0);
+      fireEvent.pointerDown(handle(), { button: 0, clientX: 700, pointerId: 1 });
+      fireEvent.pointerMove(handle(), { clientX: 500, pointerId: 1 });
+      expect(panel().style.width).toBe("680px");
+      fireEvent.pointerUp(handle(), { clientX: 400, pointerId: 1 });
+      expect(panel().style.width).toBe("780px");
+      expect(localStorage.getItem("nova.artifactWidth")).toBe("780");
+    });
+
+    it("keeps room for the chat and a minimum width", () => {
+      localStorage.setItem("nova.artifactWidth", "5000");
+      setup(0);
+      expect(panel().style.width).toBe("840px"); // 1200 - 360 for the chat
+      for (let i = 0; i < 40; i++) fireEvent.keyDown(handle(), { key: "ArrowRight" });
+      expect(panel().style.width).toBe("320px");
+    });
+
+    it("double-click resets to the default", () => {
+      localStorage.setItem("nova.artifactWidth", "700");
+      setup(0);
+      expect(panel().style.width).toBe("700px");
+      fireEvent.doubleClick(handle());
+      expect(panel().style.width).toBe("480px");
+      expect(localStorage.getItem("nova.artifactWidth")).toBeNull();
+    });
   });
 });
