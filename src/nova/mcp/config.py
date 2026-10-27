@@ -68,6 +68,9 @@ class McpServerConfig(BaseModel):
     cwd: str | None = None
     enabled: bool = True
     timeout_s: int = Field(default=120, ge=1, le=600)
+    # Tools (server's own names) kept out of the model's prompt; READ ones
+    # stay callable by skills (AD-042).
+    skill_only: list[str] = Field(default_factory=list)
 
 
 class McpConfig(BaseModel):
@@ -166,6 +169,21 @@ def upsert_server_entry(
     _write_raw(raw, path)
 
 
+GITHUB_TOOLSETS = "repos,users,context,issues,pull_requests,actions"
+
+# Every tool of the issues, pull_requests and actions toolsets
+# (github-mcp-server 1.10). Write tools among them are hidden too: skills
+# can't call them and the model never asked for them before.
+GITHUB_SKILL_ONLY = (
+    "add_issue_comment", "get_label", "issue_read", "issue_write", "list_issue_fields",
+    "list_issue_types", "list_issues", "search_issues", "sub_issue_write",
+    "add_comment_to_pending_review", "add_reply_to_pull_request_comment", "create_pull_request",
+    "list_pull_requests", "merge_pull_request", "pull_request_read", "pull_request_review_write",
+    "search_pull_requests", "update_pull_request", "update_pull_request_branch",
+    "actions_get", "actions_list", "actions_run_trigger", "get_job_logs",
+)
+
+
 def auto_configure_github(*, pat: str | None = None) -> dict[str, Any] | None:
     """Return the default GitHub MCP server entry.
 
@@ -200,12 +218,11 @@ def auto_configure_github(*, pat: str | None = None) -> dict[str, Any] | None:
         "-e", "GITHUB_PERSONAL_ACCESS_TOKEN" if pat else "GITHUB_OAUTH_CALLBACK_PORT",
         "ghcr.io/github/github-mcp-server",
         "stdio",
-        # Keep the tool surface small: the default toolset (~44 tools)
-        # serializes to ~50KB of schemas, dwarfing qwen3's 8K context on
-        # this 8GB card. repos+users+context still covers repo listing/search
-        # (repos), the authenticated user via get_me (context), and costs
-        # nothing extra in context.
-        "--toolsets", "repos,users,context",
+        # Keep the model's tool surface small (AD-016): repos+users+context
+        # cover repo listing/search and get_me. issues, pull_requests and
+        # actions feed the git_companion report and are skill_only (AD-042),
+        # so they add nothing to the prompt.
+        "--toolsets", GITHUB_TOOLSETS,
     ]
 
     if not pat:
@@ -216,6 +233,7 @@ def auto_configure_github(*, pat: str | None = None) -> dict[str, Any] | None:
         "args": args,
         "env": env,
         "enabled": True,
+        "skill_only": list(GITHUB_SKILL_ONLY),
     }
 
 

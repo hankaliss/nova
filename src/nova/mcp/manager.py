@@ -73,9 +73,19 @@ def _first_line(text: str, limit: int = 140) -> str:
     return line if len(line) <= limit else line[: limit - 1] + "…"
 
 
-def _tool_risk(client_name: str, tool_name: str) -> RiskLevel:
+def _tool_risk(client_name: str, tool_name: str, annotations: Any = None) -> RiskLevel:
     overrides = _MCP_RISK_OVERRIDES.get(client_name, {})
-    return overrides.get(tool_name, _default_risk(tool_name))
+    if tool_name in overrides:
+        return overrides[tool_name]
+    # The server's own readOnlyHint beats the name heuristic, which reads
+    # pull_request_read or actions_list as WRITE.
+    # mcp.types names it read_only_hint; the wire (and plain dicts) readOnlyHint.
+    hint = getattr(annotations, "read_only_hint", None)
+    if hint is None:
+        hint = getattr(annotations, "readOnlyHint", None)
+    if hint is True:
+        return RiskLevel.READ
+    return _default_risk(tool_name)
 
 
 class McpManager:
@@ -137,7 +147,8 @@ class McpManager:
                 {
                     "name": td.name,
                     "description": _first_line(getattr(td, "description", "") or ""),
-                    "risk": _tool_risk(client.name, td.name).value,
+                    "risk": _tool_risk(client.name, td.name, getattr(td, "annotations", None)).value,
+                    "skill_only": td.name in client.config.skill_only,
                 }
                 for td in client.tools
             ]
@@ -259,7 +270,8 @@ class McpManager:
                 name=full_name,
                 description=td.description or f"MCP tool from server '{client.name}'",
                 parameters=parameters,
-                risk=_tool_risk(client.name, td.name),
+                risk=_tool_risk(client.name, td.name, getattr(td, "annotations", None)),
+                model_visible=td.name not in client.config.skill_only,
                 permission=full_name,
                 implementation=make_impl(client, td.name),
             )

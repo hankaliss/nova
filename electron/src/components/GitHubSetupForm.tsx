@@ -1,6 +1,17 @@
 import { useState } from "react";
 import { Btn } from "./Btn";
 
+// Mirrors GITHUB_TOOLSETS / GITHUB_SKILL_ONLY in src/nova/mcp/config.py.
+export const GITHUB_TOOLSETS = "repos,users,context,issues,pull_requests,actions";
+export const GITHUB_SKILL_ONLY = [
+  "add_issue_comment", "get_label", "issue_read", "issue_write", "list_issue_fields",
+  "list_issue_types", "list_issues", "search_issues", "sub_issue_write",
+  "add_comment_to_pending_review", "add_reply_to_pull_request_comment", "create_pull_request",
+  "list_pull_requests", "merge_pull_request", "pull_request_read", "pull_request_review_write",
+  "search_pull_requests", "update_pull_request", "update_pull_request_branch",
+  "actions_get", "actions_list", "actions_run_trigger", "get_job_logs",
+] as const;
+
 export type AuthMode = "oauth" | "pat";
 
 export interface GitHubFormValues {
@@ -49,11 +60,12 @@ function valuesToConfig(v: GitHubFormValues): Record<string, unknown> {
   // The server requires the `stdio` subcommand (ghcr.io/github/github-mcp-server >= 1.10).
   args.push("stdio");
 
-  // AD-016: keep the tool surface small — the full toolset (~44 tools)
+  // AD-016: keep the model's tool surface small — the full toolset (~44 tools)
   // serializes to ~50KB of schemas, dwarfing the model's context on 8GB VRAM.
   // repos+users+context covers repo listing/search AND get_me (the username
-  // the model needs to query the user's own repos).
-  args.push("--toolsets", "repos,users,context");
+  // the model needs to query the user's own repos). issues, pull_requests and
+  // actions feed the git_companion report and are skill_only (AD-042).
+  args.push("--toolsets", GITHUB_TOOLSETS);
 
   if (oauth) {
     args.push("--oauth-callback-port", v.port);
@@ -65,6 +77,7 @@ function valuesToConfig(v: GitHubFormValues): Record<string, unknown> {
     env,
     enabled: true,
     timeout_s: Number(v.timeout) || 120,
+    skill_only: [...GITHUB_SKILL_ONLY],
   };
 }
 

@@ -8,7 +8,7 @@ import asyncio
 from typing import Any
 
 from nova.security.permissions import PermissionDenied, PermissionSystem
-from nova.tools.tool import Tool, ToolResult
+from nova.tools.tool import RiskLevel, Tool, ToolResult
 
 
 class ToolRegistry:
@@ -43,6 +43,8 @@ class ToolRegistry:
         """Return tool definitions in Ollama function-calling format."""
         schemas = []
         for tool in self._tools.values():
+            if not tool.model_visible:
+                continue
             schemas.append(
                 {
                     "type": "function",
@@ -59,9 +61,31 @@ class ToolRegistry:
         return schemas
 
     async def execute(self, name: str, args: dict[str, Any] | None = None) -> ToolResult:
-        args = args or {}
+        """Run a tool the model asked for: hidden tools don't exist for it."""
         try:
             tool = self.get(name)
+        except KeyError as e:
+            return ToolResult(success=False, error=str(e))
+        if not tool.model_visible:
+            return ToolResult(success=False, error=f"Unknown tool: {name}")
+        return await self._run(tool, args or {})
+
+    async def execute_for_skill(self, name: str, args: dict[str, Any] | None = None) -> ToolResult:
+        """Run a tool on a skill's behalf: READ only, hidden tools included.
+
+        A skill runs inside a tool call the user already allowed; letting it
+        chain into WRITE tools would skip that tool's own approval.
+        """
+        try:
+            tool = self.get(name)
+        except KeyError as e:
+            return ToolResult(success=False, error=str(e))
+        if tool.risk != RiskLevel.READ:
+            return ToolResult(success=False, error=f"{name} is not a READ tool; skills can't call it")
+        return await self._run(tool, args or {})
+
+    async def _run(self, tool: Tool, args: dict[str, Any]) -> ToolResult:
+        try:
             await self.permissions.authorize(tool, args)
             result = tool.implementation(**args)
             if asyncio.iscoroutine(result):

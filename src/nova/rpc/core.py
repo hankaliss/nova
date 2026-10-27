@@ -26,6 +26,7 @@ from nova.agent.agent import Agent
 from nova.memory.store import DEFAULT_DB_PATH, MemoryStore
 from nova.security.permissions import PermissionSystem
 from nova.shell.session import ShellSession
+from nova.skills import host as skill_host
 from nova.skills.loader import SkillLoader
 
 if TYPE_CHECKING:  # server.py imports this module
@@ -120,6 +121,7 @@ class NovaRpc(
         self._transport = transport
         self._provider = None  # created lazily from settings
         self._registry = ToolRegistry()
+        skill_host.attach(self._registry)
         self._registry.register_linux_tools()
         self._registry.register_web_tools()
         self._registry.register_filesystem_tools()

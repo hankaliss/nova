@@ -1,5 +1,7 @@
 """Tests for ToolRegistry."""
 
+import asyncio
+
 import pytest
 
 from nova.tools.registry import ToolRegistry
@@ -181,3 +183,64 @@ def test_unregister_removes_tool():
     with pytest.raises(KeyError):
         registry.get("test.tool")
     assert registry.unregister("test.tool") is False
+
+
+# ---- Hidden tools and skill calls (AD-042) --------------------------------
+
+
+def test_hidden_tool_not_in_schemas_and_not_executable_by_model():
+    registry = ToolRegistry()
+    hidden = make_tool("mcp.gh.list_issues")
+    hidden.model_visible = False
+    registry.register(hidden)
+    registry.register(make_tool("test.visible"))
+
+    assert [s["function"]["name"] for s in registry.to_schemas()] == ["test.visible"]
+    result = asyncio.run(registry.execute("mcp.gh.list_issues"))
+    assert not result.success and "Unknown tool" in result.error
+
+
+def test_skill_can_call_hidden_read_tool_but_not_write():
+    registry = ToolRegistry()
+    hidden = make_tool("mcp.gh.list_issues")
+    hidden.model_visible = False
+    registry.register(hidden)
+    registry.register(make_tool("mcp.gh.issue_write", risk=RiskLevel.WRITE))
+
+    assert asyncio.run(registry.execute_for_skill("mcp.gh.list_issues")).data == "ok"
+    refused = asyncio.run(registry.execute_for_skill("mcp.gh.issue_write"))
+    assert not refused.success and "not a READ tool" in refused.error
+    assert not asyncio.run(registry.execute_for_skill("nope")).success
+
+
+def test_skill_host_finds_and_calls_mcp_tools():
+    from nova.skills import host
+
+    registry = ToolRegistry()
+    registry.register(make_tool("mcp.github.list_issues"))
+    registry.register(make_tool("linux.list_issues"))  # not MCP: never matched
+    host.attach(registry)
+    try:
+        assert host.find_mcp_tool("list_issues") == "mcp.github.list_issues"
+        assert host.find_mcp_tool("missing") is None
+        assert asyncio.run(host.call_tool("mcp.github.list_issues")) == "ok"
+        with pytest.raises(RuntimeError, match="Unknown tool"):
+            asyncio.run(host.call_tool("mcp.github.nope"))
+    finally:
+        host.attach(None)
+
+
+def test_skill_host_times_out_slow_tools():
+    from nova.skills import host
+
+    async def slow():
+        await asyncio.sleep(5)
+
+    registry = ToolRegistry()
+    registry.register(Tool(name="mcp.x.slow", description="", implementation=slow))
+    host.attach(registry)
+    try:
+        with pytest.raises(RuntimeError, match="did not answer"):
+            asyncio.run(host.call_tool("mcp.x.slow", timeout=0.05))
+    finally:
+        host.attach(None)

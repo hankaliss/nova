@@ -499,7 +499,7 @@ Index (details below, in the order they were made):
 | AD-011 | Electron + React + TS + Tailwind, Python sidecar over stdio | current |
 | AD-014 | "Phosphor" visual identity | superseded by AD-025 |
 | AD-015 | HTML artifacts in a sandboxed iframe side panel | current |
-| AD-016 / 017 | MCP host (official SDK, stdio) + OAuth browser login | current |
+| AD-016 / 017 | MCP host (official SDK, stdio) + OAuth browser login | current (per-tool filtering: AD-042) |
 | AD-018 | Model-agnostic tool calling (native / prompt / unsupported) | current |
 | AD-019 | `~/.config/nova/agent.md` is the editable system prompt | current |
 | AD-020 | Skill maker as tools | current (risk changed by AD-023) |
@@ -522,6 +522,7 @@ Index (details below, in the order they were made):
 | AD-037 | Text-mode tool calls hidden from the visible/saved reply | current |
 | AD-038 | Token estimates calibrated per model from `prompt_eval_count` | current |
 | AD-039 | Tools return rendered reports (report kit); shown at once, kept out of the model's context | current |
+| AD-042 | Skill-only MCP tools: hidden from the model, callable by skills (READ only); risk from `readOnlyHint` | current |
 
 ## AD-001: UI Framework
 
@@ -836,4 +837,12 @@ Index (details below, in the order they were made):
 * **Alternatives:** the model writes the HTML (slow, energy-hungry, inconsistent between runs).
 * **Rationale:** user's choice. A skill's value is the aggregation done in code plus the model's interpretation; typing a report token by token on a small local model is the costly part.
 * **Consequences:** saved replies grow by the report size (~10–15 KB each); reports are not live (rerun the skill to refresh). The first bundled skill using it is `system_doctor` (replaces the `system_metrics` sample).
+
+## AD-042: Skill-only MCP tools and the skill host
+
+* **Date:** 2026-10-27
+* **Decision:** An MCP server entry may list `skill_only` tools (the server's own names). They are registered as usual but with `Tool.model_visible = False`: `ToolRegistry.to_schemas()` leaves them out of the prompt and `execute()` (the model's path) treats them as unknown. Skills reach registered tools through `nova.skills.host` (`find_mcp_tool(short_name)`, `call_tool(name, args, timeout)`), which runs `ToolRegistry.execute_for_skill()`: **READ tools only**, hidden ones included, through the normal permission check, with a timeout (default 20 s, so a server waiting on a browser login can't hang a report). An MCP tool's risk now also honours the server's `readOnlyHint` (after the curated overrides, before the name heuristic). The GitHub template adds the `issues`, `pull_requests` and `actions` toolsets, all marked `skill_only`; `git_companion` uses them to add a GitHub part (sync with the remote branch, open PRs with checks for the current branch, CI, open issues) to its reports.
+* **Alternatives:** expose the toolsets to the model (≈ +34K characters, about 13K tokens, in every prompt: more than gemma4's 12K auto context, and measured to pull "git"/"GitHub" requests away from the skill); a second, model-less GitHub server for skills (two containers, two logins); the GitHub REST API or `gh` from the skill (rejected by the user in favour of the MCP server).
+* **Rationale:** user's choice. The model's prompt stays as before (23 GitHub tools, 20,284 characters) while skills get the data. A skill runs inside a tool call the user already allowed, so it may only chain into READ tools: a WRITE tool would skip its own approval.
+* **Consequences:** `skill_only` write tools (e.g. `merge_pull_request`) are unreachable by both the model and skills. Existing `mcp.json` files keep their old toolsets until the server is re-added or edited; without the tools `git_companion` renders the local part and says what is missing. `readOnlyHint` is trusted like tool names already were: a hostile server could mislabel a tool, the same as naming it `list_…`. The MCP dialog marks such tools "skills only".
 

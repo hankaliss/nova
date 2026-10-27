@@ -8,6 +8,7 @@ from nova.mcp.config import (
     load_config,
     upsert_server_entry,
     validate_server_entry,
+    GITHUB_TOOLSETS,
     auto_configure_github,
 )
 from nova.tools.tool import RiskLevel
@@ -162,7 +163,9 @@ def test_auto_configure_github_uses_oauth_without_pat(monkeypatch):
     assert "8085" in result["args"]
     # AD-016: keep the tool surface small so schemas fit qwen3's context.
     assert "--toolsets" in result["args"]
-    assert result["args"][result["args"].index("--toolsets") + 1] == "repos,users,context"
+    assert result["args"][result["args"].index("--toolsets") + 1] == GITHUB_TOOLSETS
+    # AD-042: the extra toolsets reach skills only, not the model's prompt.
+    assert set(result["skill_only"]) >= {"list_pull_requests", "list_issues", "actions_list"}
     assert result["enabled"] is True
     assert "risk" not in result
 
@@ -183,7 +186,7 @@ def test_auto_configure_github_with_pat(monkeypatch):
     assert "127.0.0.1:8085:8085" not in result["args"]
     assert "--oauth-callback-port" not in result["args"]
     assert "--toolsets" in result["args"]
-    assert result["args"][result["args"].index("--toolsets") + 1] == "repos,users,context"
+    assert result["args"][result["args"].index("--toolsets") + 1] == GITHUB_TOOLSETS
     assert result["env"] == {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_fake123"}
     assert "risk" not in result
 
@@ -212,3 +215,27 @@ def test_tool_risk_unknown_server_uses_heuristics():
     assert _tool_risk("other", "get_thing") is RiskLevel.READ
     assert _tool_risk("other", "create_thing") is RiskLevel.WRITE
     assert _tool_risk("other", "remove_thing") is RiskLevel.DESTRUCTIVE
+
+
+def test_tool_risk_read_only_hint_beats_name():
+    from types import SimpleNamespace
+
+    from nova.mcp.manager import _tool_risk
+
+    hint = SimpleNamespace(readOnlyHint=True)
+    assert _tool_risk("github", "pull_request_read") is RiskLevel.WRITE
+    assert _tool_risk("github", "pull_request_read", hint) is RiskLevel.READ
+    assert _tool_risk("github", "actions_list", hint) is RiskLevel.READ
+    # Curated overrides still win over the server's hint.
+    assert _tool_risk("github", "push_files", hint) is RiskLevel.WRITE
+    assert _tool_risk("github", "create_thing", SimpleNamespace(readOnlyHint=False)) is RiskLevel.WRITE
+    # As the SDK delivers it (mcp.types.ToolAnnotations).
+    from mcp.types import ToolAnnotations
+
+    assert _tool_risk("github", "actions_list", ToolAnnotations(readOnlyHint=True)) is RiskLevel.READ
+
+
+def test_skill_only_is_parsed_and_defaults_empty():
+    entry = validate_server_entry({"command": "x", "skill_only": ["list_issues"]})
+    assert entry.skill_only == ["list_issues"]
+    assert validate_server_entry({"command": "x"}).skill_only == []
