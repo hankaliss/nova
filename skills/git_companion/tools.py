@@ -4,6 +4,7 @@ READ only: every git call is a query. Aggregation happens in code; the model
 gets a compact summary and the user a rendered report (AD-039).
 """
 
+import difflib
 import os
 import subprocess
 from pathlib import Path
@@ -14,6 +15,7 @@ from nova.tools.tool import RiskLevel, Tool
 MAX_DIFF_CHARS = 6000
 MAX_REPOS = 60
 SCAN_DEPTH = 3
+DEFAULT_ROOT = "~/Projects"
 _SKIP_DIRS = {"node_modules", ".venv", "venv", "__pycache__", ".cache", "target", "dist", "build"}
 _SEP = "\x1f"
 
@@ -34,9 +36,30 @@ def _git(repo: Path, *args: str, timeout: int = 20) -> str:
 def _resolve_repo(path: str) -> Path:
     p = Path(path or ".").expanduser().resolve()
     top = _git(p, "rev-parse", "--show-toplevel").strip() if p.is_dir() else ""
-    if not top:
-        raise ValueError(f"{path or '.'} is not inside a git repository")
-    return Path(top)
+    if top:
+        return Path(top)
+    # A bare name ("nova") is a repository under ~/Projects: the model knows
+    # the user's project names, not where they live.
+    if path and "/" not in path and not path.startswith(("~", ".")):
+        return _repo_by_name(path)
+    raise ValueError(f"{path or '.'} is not inside a git repository")
+
+
+def _repo_by_name(name: str) -> Path:
+    root = Path(DEFAULT_ROOT).expanduser()
+    repos = _find_repos(root) if root.is_dir() else []
+    wanted = name.lower()
+    exact = [r for r in repos if r.name.lower() == wanted]
+    matches = exact or [r for r in repos if wanted in r.name.lower()]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        names = ", ".join(str(r.relative_to(root)) for r in matches[:10])
+        raise ValueError(f"several repositories match {name!r} under {DEFAULT_ROOT}: {names}; pass one as path")
+    close = difflib.get_close_matches(wanted, [r.name.lower() for r in repos], n=5, cutoff=0.5)
+    hint = f" Closest: {', '.join(close)}." if close else ""
+    raise ValueError(f"no git repository named {name!r} under {DEFAULT_ROOT}.{hint} "
+                     "Use git_companion.scan to list them, or pass a full path.")
 
 
 def _parse_status(text: str) -> dict:
@@ -162,7 +185,7 @@ def _find_repos(root: Path) -> list[Path]:
     return repos[:MAX_REPOS]
 
 
-def _scan(root: str = "~/Projects", days: int = 7) -> dict:
+def _scan(root: str = DEFAULT_ROOT, days: int = 7) -> dict:
     base = Path(root).expanduser().resolve()
     if not base.is_dir():
         raise ValueError(f"{root} is not a directory")
@@ -222,14 +245,18 @@ def get_tools():
         Tool(
             name="git_companion.status",
             description=(
-                "Read-only status of one git repository: branch, ahead/behind, staged, modified "
-                "and untracked files, the staged diff and recent commits. Use it to write a commit "
-                "message or explain changes. Shows a report to the user by itself."
+                "Read-only status of one local git repository: branch, ahead/behind, staged, "
+                "modified and untracked files, the staged diff and recent commits. Use it for a "
+                "git/GitHub status or report of a project, a commit message, or to explain "
+                "changes. Prefer it over remote GitHub tools for the user's own projects. "
+                "Shows a report to the user by itself."
             ),
             parameters={
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "description": "Any path inside the repository (default: current directory)"},
+                    "path": {"type": "string", "description": (
+                        "Repository name (e.g. nova, found under ~/Projects) or any path inside it. "
+                        "A project the user names is a repository name, even if it matches your own name.")},
                     "log_count": {"type": "integer", "description": "How many recent commits (default 10, max 50)"},
                 },
             },
@@ -241,7 +268,8 @@ def get_tools():
             description=(
                 "Read-only scan of all git repositories under a folder (default ~/Projects): "
                 "uncommitted changes, ahead/behind and last commit of each, plus commits in the "
-                "last N days. Use it for \"what did I work on this week?\". Shows a report."
+                "last N days. Use it for \"what did I work on this week?\", a git/GitHub report "
+                "of all projects, or to find a repository. Shows a report."
             ),
             parameters={
                 "type": "object",

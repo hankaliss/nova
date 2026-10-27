@@ -78,6 +78,34 @@ def test_status_outside_repo_is_an_error(tmp_path):
         load("status").implementation(str(tmp_path))
 
 
+def test_status_by_repo_name_under_projects(tmp_path):
+    projects = tmp_path / "home" / "Projects"
+    repo = make_repo(projects / "AI" / "nova")
+    make_repo(projects / "dotfiles")
+    status = load("status").implementation
+    assert status("nova")["repo"] == str(repo)
+    assert status("NOVA")["repo"] == str(repo)
+    assert status("dot")["repo"] == str(projects / "dotfiles")  # unique partial match
+
+
+def test_status_by_name_ambiguous_or_unknown(tmp_path):
+    projects = tmp_path / "home" / "Projects"
+    make_repo(projects / "nova-web")
+    make_repo(projects / "nova-cli")
+    status = load("status").implementation
+    with pytest.raises(ValueError, match="several repositories match 'nova'.*nova-cli.*nova-web"):
+        status("nova")
+    with pytest.raises(ValueError, match="no git repository named 'nova-clu'.*Closest: nova-cli"):
+        status("nova-clu")
+
+
+def test_status_by_name_exact_beats_partial(tmp_path):
+    projects = tmp_path / "home" / "Projects"
+    repo = make_repo(projects / "nova")
+    make_repo(projects / "nova-web")
+    assert load("status").implementation("nova")["repo"] == str(repo)
+
+
 def test_status_cuts_huge_staged_diff(tmp_path):
     repo = make_repo(tmp_path / "proj")
     (repo / "big.txt").write_text("line\n" * 5000)
