@@ -66,6 +66,21 @@ class ModelsMixin:
         )
         return int(cached) if cached else FALLBACK_START
 
+    def _load_ratio(self, model: str) -> None:
+        """Seed the agent with the stored token ratio of a model (AD-038)."""
+        if self._agent is None or self._store is None or not model:
+            return
+        try:
+            stored = self._store.get_setting(f"cpt_{model}")
+            if stored:
+                self._agent.set_ratio(model, float(stored))
+        except ValueError:
+            pass
+
+    def _save_ratio(self, model: str, ratio: float) -> None:
+        if self._store is not None:
+            self._store.set_setting(f"cpt_{model}", f"{ratio:.3f}")
+
     def _emit_context(self, on_gpu: bool | None = None) -> None:
         if self._agent is None:
             return
@@ -152,6 +167,7 @@ class ModelsMixin:
         if self._agent is None:
             return
         self._agent.model = name
+        self._load_ratio(name)
         self._settings["model"] = name
         self._apply_context()
         if self._store is not None:

@@ -1139,3 +1139,16 @@ async def test_history_reload_strips_tool_artifacts(rpc, tmp_path):
     # ...while the UI still gets the full reply with its artifact.
     replayed = [m["params"][1] for m in transport.sent if m.get("event") == "messageAdded" and m["params"][0] == "assistant"]
     assert "big" in replayed[-1]
+
+
+@pytest.mark.asyncio
+async def test_token_ratio_is_stored_and_loaded_with_the_model(rpc):
+    nova, _ = rpc
+    await nova.setup()
+    nova._agent.model = "qwen3:4b"
+    nova._save_ratio("qwen3:4b", 4.28)
+    assert nova._store.get_setting("cpt_qwen3:4b") == "4.280"
+    nova._agent._chars_per_token.clear()
+    nova.selectModel("qwen3:4b")
+    assert nova._agent._chars_per_token["qwen3:4b"] == pytest.approx(4.28)
+    assert nova._agent.ratio_callback == nova._save_ratio

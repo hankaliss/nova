@@ -191,7 +191,7 @@ start of the prompt (which would drop the system prompt):
   never sent without their call. Older messages are left out, not deleted;
 * tokens are estimated with a per-model characters/token ratio measured from
   Ollama's `prompt_eval_count`, with a 10% margin (AD-038); 3 chars/token,
-  which overcounts on purpose, until the first reply;
+  which overcounts on purpose, until a model's first measurement (stored);
 * each tool result is capped at ~num_ctx/4 tokens (`truncate_middle`, which
   keeps the head and tail) before it enters context.
 
@@ -821,7 +821,7 @@ Index (details below, in the order they were made):
 * **Date:** 2026-10-26
 * **Decision:** After each request the Agent divides the characters it sent (message contents + tool schemas) by Ollama's `prompt_eval_count` and keeps a per-model characters/token ratio (clamped to 2–6, averaged with the previous value, ignored for prompts under 200 chars). Budgeting (`estimate_tokens`, `ConversationContext.to_messages`) uses that ratio × 0.9; 3.0 until the first measurement.
 * **Rationale:** the fixed 3 chars/token overestimated: qwen3:4b measured 4.28 (and `prompt_eval_count` reports the whole prompt even on a KV-cache hit, verified), so about a quarter of the history budget went unused. Ollama 0.32 has no tokenize endpoint.
-* **Consequences:** the ratio lives in memory and is relearned from the first reply after a restart; `prompt_eval_count` includes chat-template tokens, which keeps the estimate on the safe side.
+* **Consequences:** the ratio is stored per model in the settings table (`cpt_<model>`, like `auto_ctx_<model>`) and loaded at startup and on model selection, so a restart keeps it; `prompt_eval_count` includes chat-template tokens, which keeps the estimate on the safe side.
 
 ## AD-039: Skills return rendered reports
 
