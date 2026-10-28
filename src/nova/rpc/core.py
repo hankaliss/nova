@@ -191,6 +191,10 @@ class NovaRpc(
             "num_ctx": self._resolved_num_ctx(),
         }
         self._agent.context.system_prompt = self._load_system_prompt()
+        skill_host.provide("ollama_url", lambda: self._settings["ollama_url"])
+        skill_host.provide("current_model", lambda: self._agent.model if self._agent else "")
+        skill_host.provide("system_prompt", lambda: self._agent.context.system_prompt if self._agent else "")
+        skill_host.provide("select_model", self.selectModel)
         self._agent.tool_callback = self._on_tool_event
         self._agent.ratio_callback = self._save_ratio
         self._load_ratio(self._agent.model)

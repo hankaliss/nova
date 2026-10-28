@@ -355,7 +355,9 @@ no external diff) and `disk_cleaner` (`scan`: largest folders, `~/.cache`,
 Ollama models, node_modules, old pacman versions as a report; `clear_cache`:
 empties one folder directly under `~/.cache`, WRITE and never auto-approved,
 symlinks and paths refused; package cleanup needs root so it is only
-suggested). More are tracked as issues (#15 packages).
+suggested) and `model_scout` (hardware, ollama.com lookup, pull, benchmark
+with Nova's real tools, set default, remove; AD-041). More are tracked as
+issues (#15 packages).
 
 Future approaches (plugin packages, MCP) can be layered on top without breaking this format.
 
@@ -523,6 +525,7 @@ Index (details below, in the order they were made):
 | AD-038 | Token estimates calibrated per model from `prompt_eval_count` | current |
 | AD-039 | Tools return rendered reports (report kit); shown at once, kept out of the model's context | current |
 | AD-040 | First-run setup wizard (Ollama, model by VRAM with in-app pull, extras, permissions) | current |
+| AD-041 | `model_scout`: the model plans with web search, the code measures; benchmark between turns | current |
 | AD-042 | Skill-only MCP tools: hidden from the model, callable by skills (READ only); risk from `readOnlyHint` | current |
 
 ## AD-001: UI Framework
@@ -855,4 +858,12 @@ Index (details below, in the order they were made):
 * **Alternatives:** a checklist on the empty chat only; install-side changes only (`ollama` as a package dependency, a `nova doctor` CLI); setup through the chat (no model to talk to yet). Chosen by the user: A, the wizard.
 * **Rationale:** the first message used to require a terminal (`ollama pull`) and knowing which model fits the GPU; the pull API needs no root, so Nova can do it with progress.
 * **Consequences:** Nova never runs sudo or installs Ollama or SearXNG; it shows commands. The recommendation table is static: measuring per machine is #21 (`model_scout`), which can later feed this step. A user whose Ollama already has models gets no wizard on a fresh profile, by design.
+
+## AD-041: model_scout, finding the best models for this machine
+
+* **Date:** 2026-10-28
+* **Decision:** A bundled skill, driven by the model and the web (user's choice over a built-in Settings panel or a CLI). The model plans: `model_scout.hardware`, then `web.search` for current recommendations, then `model_scout.lookup` for facts from ollama.com (tags, download size, context, capabilities, the minimum Ollama version stated in the readme, and whether it fits: yes / maybe / no at 8K), then a shortlist the user picks from. The code measures: `pull` (WRITE; refuses a model that needs a newer Ollama), `benchmark` (WRITE), `set_default` (WRITE), `remove` (DESTRUCTIVE; never the chat model). `lookup()` with no names reads ollama.com's tool-capable list, so the skill works without SearXNG.
+* **Benchmark:** per model, speed and GPU placement at 8K and 16K context (prompt and generation tok/s, `/api/ps` GPU share, `nvidia-smi` VRAM), the 12 tool-calling cases sent with Nova's **real** tool schemas and system prompt (cases for tools this Nova lacks are skipped), and a follow-up that must use a number from a tool result. `quick`: 8K and 6 cases. Ranking: drop models under 10/12 (the same share of the cases run) or not fully on the GPU at 8K, then the fastest median answer, then the fastest generation. Each run is appended to `~/.local/share/nova/benchmarks.json`. The skill host now hands skills a few app services (`ollama_url`, `current_model`, `system_prompt`, `select_model`) and the model's tool schemas.
+* **Why unloading the chat model is safe:** a tool runs between model turns, when Ollama has finished generating. `benchmark` notes what was loaded (`/api/ps`, with its context size) and loads it back in a `finally`, after an error too.
+* **Consequences:** a full run takes about 2 minutes per model. The fit estimate errs on the cautious side (downloads with vision or audio parts overstate the GPU need), so close calls are measured, not guessed. Text-mode models (no native tool calls) are scored on native calls only. Pull progress is not streamed to the UI: tools have no progress channel yet. Nova never updates Ollama: the refusal shows the command.
 
