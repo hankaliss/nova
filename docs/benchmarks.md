@@ -4,6 +4,11 @@ Measured on the reference machine (see DEVELOPMENT.md): NVIDIA RTX 2070, 8 GB.
 The default model (`qwen3:4b`, `DEFAULT_MODEL` in `src/nova/llm/ollama.py`)
 was chosen over qwen3:8b from these numbers.
 
+To reproduce or extend them on any machine, ask Nova to find the best model
+for this PC: the `model_scout` skill (AD-041) runs the same speed, placement
+and tool-calling checks with Nova's real tools and keeps every run in
+`~/.local/share/nova/benchmarks.json`.
+
 ## Models (`num_ctx` 8192, Nova's streaming harness)
 
 | Model | Size | Gen speed | TTFT | Notes |
