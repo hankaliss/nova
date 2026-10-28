@@ -15,7 +15,7 @@ since). Model speeds and context sizes are in [docs/benchmarks.md](docs/benchmar
 | Node / npm | 26.11.1 |
 | Electron | 44.9.3, run through XWayland (`--ozone-platform=x11`, AD-031) |
 | Ollama | 0.32.14 at `localhost:11434` |
-| Models installed | `qwen3:4b`, `qwen3:8b`, `qwen2.5-coder:7b` |
+| Models installed | `qwen3.5:4b` (default), `gemma4:e4b`, `ornith:9b`, `qwen3:4b`, `qwen3.5:9b`, `qwen3:8b`, `ministral-3:8b`, `qwen2.5-coder:7b`, `granite4:3b` (2026-10-28) |
 | SearXNG | running at `localhost:8888` (JSON API) |
 
 ## Development Workflow

@@ -46,7 +46,7 @@ unrestricted shell.
 ## Requirements
 
 - Linux; developed and tested on CachyOS with KDE Plasma 6 (Wayland)
-- [Ollama](https://ollama.com) running at `localhost:11434`. On first launch Nova's setup wizard checks it, recommends a model for your GPU and downloads it for you (or by hand: `ollama pull qwen3:4b`, the default on an 8 GB GPU)
+- [Ollama](https://ollama.com) running at `localhost:11434`. On first launch Nova's setup wizard checks it, recommends a model for your GPU and downloads it for you (or by hand: `ollama pull qwen3.5:4b`, the default on an 8 GB GPU)
 
 - Optional: SearXNG at `localhost:8888` with the JSON format enabled (for web search), Docker (for the GitHub MCP server)
 
@@ -154,7 +154,7 @@ The full design, with every architecture decision (AD-001 … AD-038), is in
 | UI | React 18, TypeScript, Tailwind CSS 4, Vite 6 |
 | UI libraries | marked + highlight.js + DOMPurify (Markdown), xterm.js (terminal), lucide (icons) |
 | Backend | Python 3.12+ (asyncio), Pydantic, httpx |
-| LLM runtime | Ollama (default model `qwen3:4b`) |
+| LLM runtime | Ollama (default model `qwen3.5:4b`) |
 | Storage | SQLite with FTS5 |
 | Integrations | MCP Python SDK, dbus-fast (KDE kglobalaccel), systemd, SearXNG |
 | Tests | pytest + pytest-asyncio, Vitest; GitHub Actions CI |

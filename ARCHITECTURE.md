@@ -141,10 +141,11 @@ Initial runtime:
 
 Default model:
 
-**qwen3:4b** (`DEFAULT_MODEL` in `src/nova/llm/ollama.py`): 2.5 GB, fully
-VRAM-resident at 8192 ctx, 28–31 tok/s on the RTX 2070. It replaced qwen3:8b
-(AD-003) after the 2026-09-05 benchmark: at 8192 ctx, qwen3:8b offloads 16% to
-CPU and drops to ~5 tok/s.
+**qwen3.5:4b** (`DEFAULT_MODEL` in `src/nova/llm/ollama.py`, AD-043): 3.3 GB
+download, fully on the RTX 2070's GPU up to 16K context, 12/12 tool calls in
+~2.5 s with Nova's real tools. It replaced qwen3:4b (2026-10-28 benchmark,
+[docs/benchmarks.md](docs/benchmarks.md)), which had replaced qwen3:8b
+(AD-003) on 2026-09-05 because qwen3:8b offloads to the CPU at 8K.
 
 Model selection is exposed in the UI (`NovaRpc.listModels` / `selectModel`, a
 picker showing Ollama capabilities); the chosen model is persisted in
@@ -488,7 +489,7 @@ Index (details below, in the order they were made):
 |---|---|---|
 | AD-001 | PySide6 + QML UI | superseded by AD-011; removed by AD-024 |
 | AD-002 | PEP 621 `src` layout, `pyproject.toml` | current |
-| AD-003 | Default model qwen3:8b | superseded: qwen3:4b (2026-09-05 benchmark) |
+| AD-003 | Default model qwen3:8b | superseded: qwen3:4b (2026-09-05), then qwen3.5:4b (AD-043) |
 | AD-004 | Skills = `SKILL.md` + `tools.py` | current |
 | AD-005 | Agent loops on Ollama tool calls | current |
 | AD-006 | Web search via local SearXNG | current |
@@ -524,6 +525,7 @@ Index (details below, in the order they were made):
 | AD-039 | Tools return rendered reports (report kit); shown at once, kept out of the model's context | current |
 | AD-040 | First-run setup wizard (Ollama, model by VRAM with in-app pull, extras, permissions) | current |
 | AD-042 | Skill-only MCP tools: hidden from the model, callable by skills (READ only); risk from `readOnlyHint` | current |
+| AD-043 | Default model qwen3.5:4b (2026-10-28 benchmark) | current |
 
 ## AD-001: UI Framework
 
@@ -855,4 +857,12 @@ Index (details below, in the order they were made):
 * **Alternatives:** a checklist on the empty chat only; install-side changes only (`ollama` as a package dependency, a `nova doctor` CLI); setup through the chat (no model to talk to yet). Chosen by the user: A, the wizard.
 * **Rationale:** the first message used to require a terminal (`ollama pull`) and knowing which model fits the GPU; the pull API needs no root, so Nova can do it with progress.
 * **Consequences:** Nova never runs sudo or installs Ollama or SearXNG; it shows commands. The recommendation table is static: measuring per machine is #21 (`model_scout`), which can later feed this step. A user whose Ollama already has models gets no wizard on a fresh profile, by design.
+
+## AD-043: Default model qwen3.5:4b
+
+* **Date:** 2026-10-28
+* **Decision:** `DEFAULT_MODEL` is `qwen3.5:4b` (was `qwen3:4b`). The setup wizard's tiers (AD-040) follow the same family: `qwen3.5:2b` under ~6 GB of VRAM, `qwen3.5:9b` from ~12 GB (both marked "not benchmarked").
+* **Evidence (RTX 2070, 8 GB; docs/benchmarks.md):** nine models through the same suite (speed and GPU placement at 8K/16K, 12 tool-calling cases with Nova's real tools and system prompt). Four passed every case and stay on the GPU: gemma4:e4b, qwen3.5:4b, ornith:9b, qwen3:4b. Re-run with the user's GitHub MCP tools in the prompt (49 tools): qwen3.5:4b 12/12 in 2.4 s median, gemma4:e4b 12/12 in 3.0 s, ornith:9b 12/12 in 2.0 s; on four vague "git/GitHub report" requests qwen3.5:4b used the skill 4/4, gemma4:e4b 3/4 (it asks back with choice cards), ornith:9b 2/4. qwen3:4b scored 11–12/12 but thinks long: 7.4–8.5 s median, up to 32 s.
+* **Rationale:** among the models that get every tool call right, qwen3.5:4b is the most reliable on vague requests and by far the smallest on the GPU (3.2 GiB loaded at 12K vs 5.2 for ornith:9b), which leaves room for a bigger context. gemma4:e4b is the fastest with Nova's tools alone and the runner-up.
+* **Consequences:** applies to new profiles and to the wizard's recommendation; a profile with a chosen model keeps it. `qwen3.5:4b` ships a vision projector (unused by Nova). Models needing Ollama ≥ 0.35 (tev1, bonsai-2) are not benchmarked yet.
 

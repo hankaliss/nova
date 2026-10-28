@@ -14,9 +14,9 @@ from nova.tools.web import SEARXNG_URL
 # (minimum VRAM in MiB, model, note shown in the wizard), largest first.
 # Source: docs/benchmarks.md; anything not measured says so.
 MODEL_RECOMMENDATIONS: tuple[tuple[int, str, str], ...] = (
-    (11500, "qwen3:8b", "Not benchmarked at this VRAM. On 8 GB it spills to the CPU and drops to ~5 tok/s."),
-    (5800, DEFAULT_MODEL, "Benchmarked: runs fully on the GPU with an 8 GB card."),
-    (0, "qwen3:1.7b", "Not benchmarked. Runs partly on the CPU without a 6 GB+ NVIDIA GPU."),
+    (11500, "qwen3.5:9b", "Not benchmarked at this VRAM. On 8 GB it spills to the CPU and drops to ~10–14 tok/s."),
+    (5800, DEFAULT_MODEL, "Benchmarked on 8 GB: fully on the GPU, every tool call right, answers in ~2.5 s."),
+    (0, "qwen3.5:2b", "Not benchmarked. Runs partly on the CPU without a 6 GB+ NVIDIA GPU."),
 )
 
 # Progress events at most this often: a pull reports every few KB.

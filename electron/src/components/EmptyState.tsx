@@ -27,7 +27,7 @@ export function EmptyState({
       ? `${model} is loaded and runs entirely on this computer.`
       : modelCount > 0
         ? `Pick one of your ${modelCount} local models to begin.`
-        : "No models yet. Pull one with: ollama pull qwen3:4b";
+        : "No models yet. Open setup, or pull one with: ollama pull qwen3.5:4b";
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-10">

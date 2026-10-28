@@ -18,7 +18,7 @@ from nova.llm.models import (
 )
 
 DEFAULT_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "qwen3:4b"
+DEFAULT_MODEL = "qwen3.5:4b"  # AD-043, docs/benchmarks.md
 
 # Model families verified to emit structured Ollama tool_calls on /api/chat.
 NATIVE_TOOL_FAMILIES = (

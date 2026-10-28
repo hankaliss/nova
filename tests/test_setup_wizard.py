@@ -63,8 +63,8 @@ def events(transport, name):
 
 
 @pytest.mark.parametrize("vram,model", [
-    (None, "qwen3:1.7b"), (4096, "qwen3:1.7b"), (6144, DEFAULT_MODEL), (8192, DEFAULT_MODEL),
-    (12288, "qwen3:8b"), (24576, "qwen3:8b"),
+    (None, "qwen3.5:2b"), (4096, "qwen3.5:2b"), (6144, DEFAULT_MODEL), (8192, DEFAULT_MODEL),
+    (12288, "qwen3.5:9b"), (24576, "qwen3.5:9b"),
 ])
 def test_recommendation_by_vram(vram, model):
     rec = recommend_model(vram)
@@ -90,7 +90,7 @@ async def test_status_without_gpu_or_ollama_binary(wizard, monkeypatch):
     monkeypatch.setattr(setup_rpc.shutil, "which", lambda name: None)
     status = await nova.getSetupStatus()
     assert status["gpu"] is None and status["ollama"]["installed"] is False
-    assert status["recommended"]["model"] == "qwen3:1.7b"
+    assert status["recommended"]["model"] == "qwen3.5:2b"
 
 
 @pytest.mark.asyncio
