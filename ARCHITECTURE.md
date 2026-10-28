@@ -348,8 +348,10 @@ only sees the data and writes a short interpretation. Bundled skills follow
 this pattern: they do the gathering and aggregation in code, in one call.
 
 Bundled skills: `system_doctor` (failed units, journal errors grouped by
-source, kernel warnings, OOM kills, crashes, boot time), `git_companion`
-(status, staged diff and recent log of one repo; scan of all repos under
+source, kernel warnings, OOM kills, crashes, boot time), `packages` (`report`: pending updates via
+`checkupdates`, recent changes from `pacman.log`, largest explicit packages,
+orphans; READ only, replaces the old `system_updates` sample),
+`git_companion` (status, staged diff and recent log of one repo; scan of all repos under
 `~/Projects`; READ only, repo config can't run code: fsmonitor off, no hooks,
 no external diff) and `disk_cleaner` (`scan`: largest folders, `~/.cache`,
 Ollama models, node_modules, old pacman versions as a report; `clear_cache`:
